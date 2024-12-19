@@ -1,0 +1,602 @@
+---
+format: 
+  closeread-html:
+    cr-style:
+          narrative-background-color-sidebar: "#121212"
+          narrative-font-family: "Tahoma"
+          narrative-font-size: "26px"
+          section-background-color: "white"
+          narrative-text-color-sidebar: "white"
+          narrative-text-color-overlay: "white"
+          narrative-overlay-max-width: "900px"
+          narrative-background-color-overlay: "#121212"
+---
+::: {.cr-section layout="overlay-center"}
+<b> Covid-19, Family Violence and Crime In Victoria </b> <br/>-| A scrollystory by Abdur-Rahman Butler
+:::
+
+:::{.cr-section}
+
+::: {#cr-elem1}
+![](/textures/scs.png)
+:::
+
+:::{#cr-elem2}
+![](/textures/scelem2.png)
+:::
+
+:::{#cr-elem3}
+![](/textures/sc2.png)
+:::
+
+:::{#cr-elem4}
+![](/textures/sc3.png)
+:::
+
+:::{#cr-elem5}
+![](/textures/sc4.png)
+:::
+
+:::{#cr-elem6}
+![](/textures/sc5.png)
+:::
+
+:::{#cr-elem7}
+![](/textures/sc6.png)
+:::
+
+:::{#cr-plot1}
+```{r}
+#| echo: FALSE
+#| message: FALSE 
+#| warning: FALSE
+# install.packages("tidyverse")
+# install.packages("ggplot2")
+# install.packages("dplyr")
+# install.packages("ggrepel")
+# install.packages("geomtextpath")
+# install.packages("viridis")
+# install.packages("leaflet")
+# install.packages("ozmaps")
+# install.packages("sf")
+# install.packages("tmap")
+# install.packages("ggthemes")
+# remotes::install_github("hughjonesd/ggmagnify")
+# install.packages("packcircles")
+# install.packages('waffle')
+# install.packages("scales")
+# install.packages("gganimate")
+# install.packages("data.table")
+# install.packages("collapse")
+# install.packages("plotly")
+# install.packages("treemapify")
+
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(ggrepel)
+library(geomtextpath)
+library(viridis)
+library(leaflet)
+library(ozmaps)
+library(sf)
+library(tmap)
+library(ggmagnify)
+library(ggthemes)
+library(ggtext)
+library(packcircles)
+library(waffle)
+library(scales)
+library(gganimate)
+library(data.table)
+library(collapse)
+library(plotly)
+library(treemapify)
+
+df_crime <- read_csv("data/crimestatistics.csv")
+df_israd <- read_csv("data/isradformatted.csv")
+
+# constants
+MELBOURNE_LGAS <- c("Banyule","Bayside","Boroondara","Brimbank",
+                    "Cardinia","Casey","Darebin","Frankston",
+                    "Glen Eira","Greater Dandenong","Hobsons Bay",
+                    "Hume","Kingston","Knox","Manningham",
+                    "Maribyrnong","Maroondah","Melbourne","Melton",
+                    "Merri-bek","Monash","Moonee Valley",
+                    "Mornington Peninsula","Nillumbik",
+                    "Port Phillip","Stonnington","Whitehorse",
+                    "Whittlesea","Wyndham","Yarra","Yarra Ranges")
+
+
+# merged df
+data <- merge(x=df_crime, y=df_israd, by="local_government_area", all = TRUE)
+
+```
+
+```{r}
+#| echo: FALSE
+#| message: FALSE 
+#| warning: FALSE
+
+df_1 <- data
+df_1 <- df_1 %>% filter(str_detect(offence_subgroup, "FV|family"))
+df_1 <- df_1 %>% filter(str_detect(offence_subgroup, "Non-FV", negate=TRUE))
+
+df_1 <- df_1 %>% group_by(year) %>% 
+  summarise(sum_record=(sum(incidents_recorded)),
+            .groups = 'drop')  %>%
+  as.data.frame()
+
+df_1["color"] <- sapply(1:nrow(df_1), function(i) df_1$sum_record[i] > df_1$sum_record[i+1])
+df_1 <- arrange(df_1, year) %>% 
+    mutate(color = sum_record > lead(sum_record),
+           group = "1")
+
+plot1 <- ggplot(df_1, aes(x=year, y=sum_record)) +
+    geom_path(data = df_1,
+              aes(x=year, y=sum_record, color = color, group=group),linewidth=1.5) +
+    scale_color_manual(values = c("#D81B60","#004D40"), na.value = "white",
+                       labels = c("Increase", "Decrease", "")) +
+    geom_point(color="black") +
+    theme_minimal() +
+  annotate(geom="text", x=2021, y=0, 
+             label="", size=3, col="black") +
+    scale_x_continuous(breaks=c(2015,2017, 2019, 2021,2023)) +
+    theme(
+        strip.text.x = element_text(
+          size = 10, color = "black"),
+        strip.text.y = element_text(
+          size = 10, color = "black"),
+        plot.subtitle = element_text(size=12),
+        plot.title = element_text(face = "bold", size=13),
+        axis.text.x = element_text(color="black", size = 11),
+        axis.text.y = element_text(color="black", size = 11),
+        axis.title.y = element_text(angle = 0, size=10),
+        axis.title.x = element_text(angle = 0, size=10),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        legend.title=element_blank()
+        ) +
+    scale_y_continuous(labels = label_number(scale = 1e-3, suffix = "k")) +
+    transition_reveal(year) +
+    labs(
+        title="Annual count of family violence related incidents in Victoria",
+        y="Reported Crimes", x="Year") 
+
+
+plot1
+```
+:::
+:::{#cr-plot2}
+```{r}
+#| echo: FALSE
+#| message: FALSE 
+#| warning: FALSE
+
+df_2 <- data
+
+
+
+df_2 <- df_2 %>% group_by(year) %>% 
+  summarise(sum_record2=(sum(incidents_recorded)),
+            .groups = 'drop')  %>%
+  as.data.frame()
+
+df_2 <- arrange(df_2, year) %>% 
+    mutate(color = sum_record2 > lead(sum_record2),
+           group = "1")
+
+df_2 <- merge(x=df_2, y=df_1, by="year", all = TRUE)
+
+df_2 <- df_2 |> fmutate(pc1= (sum_record - shift(sum_record))/shift(sum_record) * 100)
+df_2 <- df_2 |> fmutate(pc2= (sum_record2 - shift(sum_record2))/shift(sum_record2) * 100)
+
+df_2 <- df_2[-1, ]
+
+
+plot2 <- ggplot(df_2, aes(x=year, y=sum_record)) +
+    geom_path(data = df_2,
+              aes(x=year, y=pc1, color= "% Change in \nFV Incidents\n", group=group.y),linewidth=1.5) +
+    geom_path(data = df_2,
+              aes(x=year, y=pc2, color = "% Change in \nTotal Incidents\n", group=group.x),linewidth=1, linetype="dashed") +
+    theme_minimal() +
+  annotate('rect', xmin=2019.75, xmax=2022.25, ymin=-10, ymax=20, alpha=.2, fill='darkgrey') +
+  
+    scale_x_continuous(breaks=c(2015,2017, 2019, 2021,2023)) +
+    theme(
+        strip.text.x = element_text(
+          size = 10, color = "black"),
+        strip.text.y = element_text(
+          size = 10, color = "black"),
+        plot.subtitle = element_text(size=12),
+        plot.title = element_text(face = "bold", size=13),
+        axis.text.x = element_text(color="black", size = 11),
+        axis.text.y = element_text(color="black", size = 11),
+        axis.title.y = element_text(angle = 0, size=10),
+        axis.title.x = element_text(angle = 0, size=10),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        legend.title=element_blank()
+        ) +
+  scale_color_manual(values=c("darkred", "#CC6666")) +
+  annotate(geom="text", x=2021, y=18, 
+             label="Period of Victorian\nLockdowns", size=3, col="black") +
+  scale_y_continuous(labels = label_number(suffix = "%")) +
+    
+    transition_reveal(year) +
+    labs(
+        title="The annual growth rate of criminal incidents in Victoria (2015-2024)",
+        y="Reported Crimes", x="Year") +
+  geom_hline(yintercept=0, linetype="dashed", 
+                color = "black", size=1) +
+  transition_reveal(year)
+
+
+plot2
+```
+:::
+:::{#cr-plot3}
+```{r}
+#| echo: FALSE
+#| message: FALSE 
+#| warning: FALSE
+
+df_3 <- data
+df_3 <- df_3 %>% group_by(offence_division, year) %>% 
+  summarise(incidents=sum(incidents_recorded),
+            .groups = 'drop')  %>%
+  as.data.frame()
+
+plot3<- ggplot(df_3, aes(fill=offence_division, y=incidents, x=year)) +
+    geom_bar(stat="identity") +
+    scale_fill_viridis(discrete = T, name = "Offence Division") +
+    theme_minimal() +
+    theme(
+        strip.text.x = element_text(size = 10, color = "black"),
+        strip.text.y = element_text(size = 10, color = "black"),
+        plot.subtitle = element_text(size=12),
+        plot.title = element_text(face = "bold", size=14),
+        axis.text.x = element_text(color="black", size = 11, angle=45),
+        axis.text.y = element_text(color="black", size = 11),
+        axis.title.y = element_text(angle = 0)
+        ) +
+    scale_x_continuous(breaks=c(2015,2017, 2019, 2021,2023)) +
+    scale_y_continuous(labels = label_number(scale = 1e-3, suffix = "k")) +
+    labs(title="Amount of crimes in Victoria by offence division", 
+       y="Incidents Reported", x="Year")
+
+plot3
+```
+:::
+:::{#cr-plot4}
+```{r}
+#| echo: FALSE
+#| message: FALSE
+#| warning: FALSE
+
+df_4 <- data
+df_4 = df_4[df_4$year == "2024",]
+df_4 <- df_4 %>% filter(str_detect(offence_subgroup, "FV"))
+
+df_4 <- df_4 %>% group_by(offence_subgroup) %>% 
+  summarise(sum_record=(sum(incidents_recorded)),
+            .groups = 'drop')  %>%
+  as.data.frame()
+
+df_4 <- df_4 %>% mutate(isfv = ifelse((str_detect(offence_subgroup, "FV") & (str_detect(offence_subgroup, "Non-FV", negate=TRUE))), "Culprit is a relative or partner", "Culprit is not related"))
+
+df_4[str_detect(df_4$offence_subgroup, "Serious assault"),]$offence_subgroup = "Serious assault"
+
+df_4[str_detect(df_4$offence_subgroup, "Common assault"),]$offence_subgroup = "Common assault"
+
+df_4[str_detect(df_4$offence_subgroup, "Threatening behaviour"),]$offence_subgroup = "Other violent crime"
+
+df_4[str_detect(df_4$offence_subgroup, "Harassment"),]$offence_subgroup = "Other violent crime"
+
+df_4[str_detect(df_4$offence_subgroup, "Stalking"),]$offence_subgroup = "Other violent crime"
+
+df_4["sum_record"] = df_4["sum_record"] / 100
+
+df_4 <- df_4[order(df_4$isfv, decreasing = FALSE), ] 
+
+ggplot(data = df_4, aes(fill=isfv,values=sum_record)) +
+  geom_waffle(size=0.5, color="white", n_rows=7) +
+    scale_fill_manual(values =  c("darkred",alpha("darkred", 1/3))) +
+  facet_wrap(~factor(offence_subgroup, levels=c('Common assault', 'Serious assault', 'Other violent crime')), ncol=1, strip.position="right") +
+  theme_void() +
+  theme(
+        plot.title = element_markdown(face = "bold", size=18, hjust = 0,margin=margin(0,0,10,0)),
+        legend.title=element_blank(),
+        legend.text=element_text(size=10),
+        plot.caption = element_text(size=12, hjust = 0.8),
+        strip.text = element_text(
+        size = 12, color = "black"),
+        legend.position="bottom",
+        plot.margin = unit(c(0.2, 0.2, 0.2, 0.2), "inches"),
+        ) +
+    labs(title="Over <span style='color:#FF0000'>50%</span> of all assaults in Victoria are perpetrated<br/>by a family member or partner",
+         caption="1 Box = 100 incidents recorded in Victoria (2024)") 
+```
+:::
+
+
+:::{#cr-plot5}
+```{r}
+#| echo: FALSE
+#| message: FALSE
+#| warning: FALSE
+
+df_5 <- data
+df_5 <- df_5  %>% filter(str_detect(offence_subgroup, "FV|family"))
+df_5 <- df_5 %>% filter(str_detect(offence_subgroup, "Non-FV", negate=TRUE))
+
+df_5 = df_5[df_5$year == "2024",]
+
+df_5 <- df_5 %>% group_by(offence_subgroup) %>% 
+  summarise(sum_record=(sum(incidents_recorded)),
+            .groups = 'drop')  %>%
+  as.data.frame()
+
+df_5 <- cbind(df_5, data.frame(name = c("Serious\nassault","Common\n assault","Stalking","&", "Threatening\nbehaviour", "Breach family\nviolence order")))
+
+df_5 <- df_5[order(df_5$sum_record, decreasing = FALSE), ] 
+
+df_5 <- data.frame(group=df_5$name, value=df_5$sum_record) 
+
+packing <- circleProgressiveLayout(df_5$value, sizetype='area')
+packing$radius <- 1*packing$radius
+df_5 <- cbind(df_5, packing)
+df.gg <- circleLayoutVertices(packing, npoints=100)
+
+ 
+plot5 <- ggplot() +
+  geom_polygon(data = df.gg , aes(x, y, group = id, fill=id), colour = "black", alpha = 1) +
+  geom_label(data = df_5, aes(x, y, size=1.2, label = group), color="black", fill="white") +
+  scale_fill_viridis(option="inferno") +
+  theme_void()+ 
+  theme(
+        plot.subtitle = element_text(size=12, hjust = 0.1),
+        plot.title = element_markdown(face = "bold", size=18, hjust = 0.1),
+        legend.position="none",
+        plot.caption = element_text(size=10,hjust = 0.95, face="bold"),
+        ) +
+    labs(title="Breaches of  <span style='color:#FF0000'>intervention orders</span> are very <br/>common in Victoria, assaults following...",
+        subtitle=" Relative scale of family violence related crime incidents in Victoria (2024)", caption= "  & - Harassment and private nuisance") +
+  scale_size_continuous(range = c(1,4)) +
+  coord_equal()
+
+plot5
+```
+:::
+
+:::{#cr-plot6}
+```{r}
+#| echo: FALSE
+#| warning: FALSE
+
+df_6 <- data
+
+df_6 <- df_6[(df_6$year==2021) & (df_6$offence_subgroup=="F92 Public health and safety offences"),]
+
+df_6 <- df_6 %>% group_by(local_government_area) %>% 
+  summarise(sum_inc = sum(incidents_recorded), mean_score = mean(score))
+
+df_6 <- merge(x=df_6, y=df_israd, by="local_government_area", all = TRUE)
+df_6["rel_inc"] = (df_6["sum_inc"] / df_6["population"])
+
+abs_lga <- ozmap_data("abs_lga")
+abs_ste <- ozmap_data("abs_ste")
+vic_state <- st_bbox(dplyr::filter(abs_ste, stringr::str_detect(NAME, "Victoria")))
+
+
+vic_lga <- abs_lga[unlist(st_intersects(st_as_sfc(vic_state), abs_lga)), ]
+vic_lga_new <- str_replace_all(vic_lga$NAME,"\\([^()]*\\)","")
+vic_lga_new <- trimws(vic_lga_new)
+
+vic_lga["local_government_area"] <- as.data.frame(vic_lga_new)
+vic_lga$local_government_area[vic_lga$local_government_area == 'Moreland'] <- 'Merri-bek'
+
+vic_lga <- vic_lga[vic_lga$local_government_area %in% as.vector(df_6$local_government_area),]
+vic_lga <- merge(x=vic_lga, y=df_6, by="local_government_area", all = TRUE)
+
+vic <- ggplot(vic_lga) +
+  geom_sf(aes(fill=rel_inc), lwd=0.62,color="grey5") +
+  scale_fill_viridis(option="viridis") +
+  coord_sf(xlim = c(141, 150), ylim = c(-39.1, -34)) +
+  theme_void() +
+  theme(legend.position="bottom",
+        plot.title = element_text(hjust = 0.5,face = "bold", size=15),
+        plot.subtitle = element_text(hjust=0.5, size=13),
+        legend.text = element_text(size=10),
+        legend.title = element_text(size=11, face="bold"))
+
+
+plot6 <- vic + 
+  labs(title="Rates of Covid-19 fines per capita in Victoria (2021)", 
+       subtitle="How per capita Covid-19 fines differ across Victoria's 79 LGAs",
+       fill = "Fines per resident")
+
+plot6
+```
+:::
+
+:::{#cr-plot7}
+```{r}
+#| echo: FALSE
+#| warning: FALSE
+
+
+vic <- ggplot(vic_lga) +
+  geom_sf(aes(fill=rel_inc), lwd=0.62,color="grey5") +
+  scale_fill_viridis(option="viridis") +
+  coord_sf(xlim = c(144.5, 145.5), ylim = c(-38.2, -37.5)) +
+  theme_void() +
+  theme(legend.position="bottom",
+        plot.title = element_text(hjust = 0.5,face = "bold", size=15),
+        plot.subtitle = element_text(hjust=0.5, size=13),
+        legend.text = element_text(size=10),
+        legend.title = element_text(size=11, face="bold"))
+
+
+plot7 <- vic + 
+  labs(title="Rates of Covid-19 fines per capita in Victoria (2021)", 
+       subtitle="How per capita Covid-19 fines differ across Victoria's 79 LGAs",
+       fill = "Fines per resident")
+
+plot7
+```
+:::
+
+:::{#cr-plot8}
+```{r}
+#| echo: FALSE
+#| warning: FALSE
+#| message: FALSE
+
+
+OUTLIER_LGAS <- c("Melbourne", "Central Goldfields",
+                   "Boroondara", "Brimbank", "Hume", "Greater Dandenong")
+
+
+df_8 <- data
+df_8 <- df_8[(df_8$year==2021) & (df_8$offence_subgroup=="F92 Public health and safety offences"),]
+
+df_8 <- df_8 %>% group_by(local_government_area, offence_division) %>% 
+  summarise(sum_inc = sum(incidents_recorded), mean_score = mean(score))
+
+df_8<- merge(x=df_8, y=df_israd, by="local_government_area", all = TRUE)
+
+df_8["rel_inc"] = (df_8["sum_inc"] / (df_8["population"] / 1000))
+labels <- df_8 |> filter(local_government_area %in% OUTLIER_LGAS)
+
+plot8 <- ggplot(df_8, aes(x=mean_score, y=rel_inc, size = population)) +
+  geom_smooth(method=lm, level=0.99, col="blue", fill="grey") +
+    scale_size(range = c(.1, 6)) +
+    guides(size = "none") +
+    scale_color_viridis(option="mako", name = "Population", labels = label_number(scale = 1e-3, suffix = "k")) +
+    theme_bw() +
+    theme(panel.border = element_rect(fill = "transparent", color = "black", linewidth = 1.5),
+        axis.text.x = element_text(color="black", size = 10),
+        axis.text.y = element_text(color="black", size = 10),
+        axis.title.y = element_text(angle=0),
+        plot.title = element_text(face = "bold", size=13),
+        plot.subtitle = element_text(size=11),
+        strip.text.x = element_text(size = 11, color = "black"),
+        strip.text.y = element_text(size = 11, color = "black"),
+        strip.background = element_rect(
+          color="black", fill="grey90", size=1.5, linetype="solid")) +
+  geom_point(alpha=0.8, aes(color=population)) +
+  geom_label_repel(aes(label = local_government_area), data=labels,
+                  min.segment.length = unit(0.7, 'lines'),
+                 box.padding	= 0.5, size=3, fill = "white") +
+  labs(title="Rate of lockdown fines by LGA size and ISRAD score (2021)", 
+       subtitle="The rate of public health related fines across Victorian LGAs (2021)\nper 1,000 residents",
+       y="Rate of Lockdown\n Breaches (p/k)", x="ISRAD Score")
+
+
+plot8
+```
+:::
+
+<b> Debates surrounding crime and policing have come to dominate the national spotlight in Australia over the past few years</b> [@cr-elem1]
+
+Victoria's Covid-19 lockdown laws have attracted the criticism of many social science and legal experts... [@cr-elem1]{scale-by="2" pan-to="-45%,-25%"}
+
+Meanwhile, many feel that not enough is being done to combat the epidemic of family violence and violence against women in Australia [@cr-elem1]{scale-by="1.7" pan-to="30%,10%"}
+
+<b> Let's explore these two issues through the data </b> [@cr-elem1]{scale-by="0.8"}
+
+Family violence has been on the rise in Victoria for several years now [@cr-plot1]{scale-by="0.8"}
+
+In fact, in the past ten years, family violence incidents have only fallen twice year-on-year! [@cr-plot1]{scale-by="0.8"}
+
+This trend has been sustainted even when crime has fallen in Victoria [@cr-plot2]{scale-by="0.8"}
+
+<b> Notice the negative crime growth rate during the Covid-19 lockdown years</b>  [@cr-plot2]{scale-by="0.9"}
+
+Meanwhile growth in family violence incidents have remained higher than the overall growth in crime
+
+To get a better grasp of things, let's have a look at which crimes fall under the definition of family violence [@cr-elem2]{scale-by="1.1"}
+
+Victoria has 6 divisions of crimes, each with dozens and dozens of subdivisions and subgroups.... [@cr-plot3]{scale-by="1.7"}
+
+....The most common criminal activity in Victoria are property and deception related offences, or, put simply, "theft". [@cr-plot3]{scale-by="1.7" pan-to="-10%,0%"}
+
+Of particular interest to us is category <b>"A: Crimes against the person"</b>... 
+
+...This division entails violent and aggressive crimes like assault, harassment and stalking...
+
+You may notice that Division F increased significantly during the Covid-19 lockdowns when most other categories of crime fell. We will come back to this category in a bit... [@cr-plot3]{scale-by="1.7"}
+
+For now, let us focus on Division A
+
+You may question how many incidents of violent crime in Victoria relate to family violence...
+
+...In our database, assaults and violent crime are divided by its relation to family violence (FV). For instance, we have non-FV violent crimes and FV related violent crimes...[@cr-elem2]
+
+As it turns out, an astounding <b>51%+</b> of all assaults and violent crime is perpetrated by a close family member or partner in Victoria [@cr-plot4]{scale-by="1.7"}
+
+In terms of serious assaults, that is almost 7,700 incidents in 2024 alone or the equivalent of <b>21 serious assaults a day!</b>
+
+Serious assaults are violent incidents that lead to severe and permanent life threatening injuries
+
+Notwithstanding, a plurality of family violence related crimes are not assault related [@cr-plot5]{scale-by="1.7"}
+
+Many relate to breaches of intervention orders, of which <b>27,000</b> incidents were recorded in Victoria in the year 2024 [@cr-plot5]{scale-by="1.7"}
+
+As alluded to earlier, family violence is not the only criminal issue that has captivated the Australian public [@cr-elem3]{scale-by="0.8"}
+
+Debates surrounding the impact, legality and ethics of Victoria's harsh lock down laws continue to rage on...
+
+As early as 2020, experts warned of the risk of racial profiling and an exacerbation of economic inequalities due to the implementation of Covid-19 laws [@cr-elem4]{scale-by="0.9"}
+
+In 2023, the ABC published an analysis of data retrieved by a Victorian Police Freedom of Information (FOI) request [@cr-elem5]{scale-by="1.1"}
+
+Their analysis found that around 20% of Covid-19 fines were issued to individuals from Middle Eastern and African descent [@cr-elem5]{scale-by="1.1"}
+
+According to commentary on the data, this is mostly due to over-policing in low socio-economic areas, as reflected by a higher rate of fines being issued when a police offer is present [@cr-elem6]{scale-by="1.1"}
+
+To interrogate this issue further, we can begin by looking at how crime rates differ across local government areas as a proxy for local communities [@cr-elem6]{scale-by="1.1"}
+
+As mentioned earlier, Division F crimes rose significantly during the pandemic [@cr-plot3]{scale-by="1.5"}
+
+This is mostly due to the liberal issuing of Covid-19 fines, under the criminal subcategory of <b>F92 Public health and safety offences </b>[@cr-plot3]{scale-by="1.7" pan-to="-10%,0%"}
+
+Let us have a look at how these fines were issued across location [@cr-plot3]{scale-by="1.7"}
+
+For the most part, rural Victoria recorded very few public health offences, both as a rate and raw amount [@cr-plot6]{scale-by="1.7"}
+
+This is likely due to the laxer isolation and social distancing laws that were put in place outside of Melbourne, but may also be due to under-policing [@cr-plot6]{scale-by="1.7"}
+
+Zooming into Melbourne, we see that the CBD and some of the Northern and Eastern Suburbs have a higher than average offence rate[@cr-plot7]{scale-by="1.7"}
+
+Brimbank and Hume have some of the highest rates of breaches, whilst being Victoria's second and sixth most multicultural LGA respectively [@cr-plot7]{scale-by="3.4" pan-to="0%,60%"}
+
+Nevertheless, Melbourne's wealthy inner-East also seems to have an above average violation rate, muddying the picture [@cr-plot7]{scale-by="3"}
+
+To get a better idea of whether or not a relationship exists, we can use the Australian Bureau of Statistics Socio-Economic Indexes for Areas (SEIFA) dataset [@cr-elem7]{scale-by="1.2"}
+
+This dataset aims to measure how advantaged or disadvantaged a local government area is
+
+It does so by giving a score to each local-government-area, with a higher score indicated greater socio-economic advantage [@cr-elem7]{scale-by="1"}
+
+This score is known as the <b>"Index of Relative Socio-Economic Advantage and Disadvantage"</b> Or IRSAD for short
+
+Plotting the rate of Covid fines against the ISRAD score yields a fascinating result... [@cr-plot8]{scale-by="1.5"}
+
+In terms of overall trends, wealthier and more advantaged suburbs tend to recieve more fines as a percentage of the population
+
+Indeed, Victoria's least advantaged LGA of Central Goldfields has a lower rate of Covid fines than Victoria's most advantage LGA of Borondoora
+
+Nontheless, Victoria's <b>most multi-cultural LGAs</b> of Hume, Greater Dandenong and Brimbank all have significantly higher rates of fines relative to their peers of equivalent ISRAD level  [@cr-plot8]{scale-by="1.7"}
+
+This suggests that racial profiling may indeed play a role, although of course we would need more granual data to be certain [@cr-plot8]{scale-by="1.7" pan-to="-10%,0%"}
+
+So to summarise, we have discussed how incidents of family violence are on the rise, as well as how they have been recorded... [@cr-elem1]{scale-by="1.7" pan-to="30%,10%"}
+
+...We have also explored how racial profiling may have played a role in the overrepresentation of Covid-19 related fines in Victoria's lockdown [@cr-elem1]{scale-by="2" pan-to="-45%,-25%"}
+
+I hope this was useful [@cr-elem1]
+
+The End. [@cr-elem1]
+:::

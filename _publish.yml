@@ -1,0 +1,4 @@
+- source: project
+  quarto-pub:
+    - id: a97e0628-2238-4b25-9986-20b427ff5970
+      url: 'https://butler.quarto.pub/crsubbutler'
